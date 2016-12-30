@@ -10393,9 +10393,11 @@ Return Value:
     MDL - An MDL mapping a range of pages in the specified range.
           This may map less memory than the caller requested if the full amount
           is not currently available.
+          返回一个映射特定范围的MDL， 如果当前数量不是完全正好，MDL描述的范围可能要比请求的小
 
     NULL - No pages in the specified range OR not enough virtually contiguous
            nonpaged pool for the MDL is available at this time.
+           在指定的范围内没有PAGES, 或者在当时，Nonpaged pool 没有足够的空间给MDL。
 
 Environment:
 
