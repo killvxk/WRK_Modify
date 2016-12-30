@@ -10471,8 +10471,8 @@ Environment:
         return NULL;
     }
 
-    LowPage = (PFN_NUMBER)(LowAddress.QuadPart >> PAGE_SHIFT);
-    HighPage = (PFN_NUMBER)(HighAddress.QuadPart >> PAGE_SHIFT);
+    LowPage     = (PFN_NUMBER)(LowAddress.QuadPart  >> PAGE_SHIFT);
+    HighPage    = (PFN_NUMBER)(HighAddress.QuadPart >> PAGE_SHIFT);
 
     if (HighPage > MmHighestPossiblePhysicalPage)
     {
@@ -10488,6 +10488,7 @@ Environment:
         TotalBytes = (SIZE_T)((ULONG)(MAXULONG - PAGE_SIZE));
     }
 
+    /* 换算成页的个数 */
     SizeInPages = (PFN_NUMBER)ADDRESS_AND_SIZE_TO_SPAN_PAGES(0, TotalBytes);
 
     SkipPages = (PFN_NUMBER)(SkipBytes.QuadPart >> PAGE_SHIFT);
@@ -10499,6 +10500,7 @@ Environment:
     // be recalculated later while holding the lock.
     //
 
+    /* 当前系统可用的页的数量（不包括PFN lock），之后在获取锁的时候，会重新获取 */
     MaxPages = MI_NONPAGEABLE_MEMORY_AVAILABLE() - 1024;
 
     if ((SPFN_NUMBER)MaxPages <= 0) 
@@ -10530,27 +10532,25 @@ Environment:
     // Allocate an MDL to return the pages in.
     //
     /* 循环创建一个MDL */
-    do {
+    do 
+    {
         MemoryDescriptorList = MmCreateMdl (NULL,
                                             NULL,
                                             SizeInPages << PAGE_SHIFT);
     
-        if (MemoryDescriptorList != NULL) {
+        if (MemoryDescriptorList != NULL) 
             break;
-        }
-        SizeInPages -= (SizeInPages >> 4);                  // 为何要按照这个大小减少呢
-    } while (SizeInPages != 0);
+        SizeInPages -= (SizeInPages >> 4);                                              // 为何要按照这个大小减少呢
+    } while ( SizeInPages != 0 );
 
     if (MemoryDescriptorList == NULL) 
-    {
         return NULL;
-    }
 
     //
     // Ensure there is enough commit prior to allocating the pages.
     //
 
-    if (MiChargeCommitment (SizeInPages, NULL) == FALSE) 
+    if ( MiChargeCommitment (SizeInPages, NULL) == FALSE ) 
     {
         ExFreePool (MemoryDescriptorList);
         return NULL;
@@ -10560,7 +10560,7 @@ Environment:
     // Allocate a list of colored anchors.
     //
     // 分配一系列colored 集合
-    ColoredPageInfoBase = (PCOLORED_PAGE_INFO) ExAllocatePoolWithTag (
+    ColoredPageInfoBase = (PCOLORED_PAGE_INFO)ExAllocatePoolWithTag (
                                 NonPagedPool,
                                 MmSecondaryColors * sizeof (COLORED_PAGE_INFO),
                                 'ldmM');
@@ -10591,17 +10591,23 @@ Environment:
 
     MdlPage = (PPFN_NUMBER)(MemoryDescriptorList + 1);
 
-    MmLockPageableSectionByHandle (ExPageLockHandle);
+    MmLockPageableSectionByHandle ( ExPageLockHandle );
 
     Thread = KeGetCurrentThread ();
 
+    /* 关掉当前线程的Special kernel APC */
     KeEnterGuardedRegionThread (Thread);
+
+    /* 获取一个推锁 */
     MI_LOCK_DYNAMIC_MEMORY_SHARED ();
 
+    /* LOCK PFN */
     LOCK_PFN (OldIrql);
 
+    /* 解锁之前被描述的物理页 */
     MiDeferredUnlockPages (MI_DEFER_PFN_HELD);
 
+    /* 再次更新一下 MaxPages */
     MaxPages = MI_NONPAGEABLE_MEMORY_AVAILABLE() - 1024;
 
     if ((SPFN_NUMBER)MaxPages <= 0) 
@@ -10620,6 +10626,7 @@ Environment:
     // and reacquired).
     //
 
+    /* 检查MmAvaliablePages */
     if ((SPFN_NUMBER)SizeInPages > (SPFN_NUMBER)(MmAvailablePages - MM_HIGH_LIMIT)) 
     {
         if (MmAvailablePages > MM_HIGH_LIMIT) 
@@ -10652,6 +10659,7 @@ Environment:
     // at the conclusion of the loops.
     //
 
+    /* 从这就开始更新了系统数量，说明它确定下面一定可以满足该数量的PAGES */
     InterlockedExchangeAddSizeT (&MmMdlPagesAllocated, SizeInPages);
 
     MI_DECREMENT_RESIDENT_AVAILABLE (SizeInPages, MM_RESAVAIL_ALLOCATE_FOR_MDL);

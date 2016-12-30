@@ -50,7 +50,7 @@ PFN_NUMBER MmLowestPhysicalPage = (PFN_NUMBER)-1;
 // Highest possible physical page number in the system.
 //
 
-PFN_NUMBER MmHighestPossiblePhysicalPage;
+PFN_NUMBER MmHighestPossiblePhysicalPage                                // 当前系统可用的最高的物理页PFN号;
 
 //
 // Total number of available pages in the system.  This
@@ -78,6 +78,10 @@ ULONG MiLastVadBit = 1;
 // The PFN LOCK must be owned to manipulate this value.
 //
 
+/* 如果每个进程都按最小工作集来算， 当前系统可用的物理页的个数。
+ * 系统启动时，，该值设为 MmAvaliablePages - MM_FLUID_PHYSICAL_PAGE.
+ * 每次有线程创建， 则从其中扣掉内核栈所占用的大小。 每次有进程创建，则从其中扣掉最小工作集的大小。
+ * 如果该值变为负数，创建进程，内核栈，调整工作集的操作就会失败。 当修改该值时需要获取对应的锁 */
 SPFN_NUMBER MmResidentAvailablePages;
 
 //

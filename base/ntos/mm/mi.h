@@ -2249,9 +2249,7 @@ extern LONG MiDelayPageFaults;
 //
 //--
 #define MI_NONPAGEABLE_MEMORY_AVAILABLE()                                    \
-        ((SPFN_NUMBER)                                                      \
-            (MmResidentAvailablePages -                                     \
-             MmSystemLockPagesCount))
+        ( (SPFN_NUMBER)( MmResidentAvailablePages - MmSystemLockPagesCount ) )
 
 extern PFN_NUMBER MmSystemLockPagesCount;
 
